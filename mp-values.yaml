@@ -1,0 +1,54 @@
+spec:
+  organization: tetrate
+  certIssuer:
+    selfSigned: {}
+    tsbCerts: {}
+    clusterIntermediateCAs: {}
+  components:
+    frontEnvoy:
+      port: 8443
+    oap:
+      streamingLogEnabled: true
+      kubeSpec:
+        deployment:
+          env:
+          - name: SW_CORE_PERSISTENT_PERIOD
+            value: "5"
+    webUI:
+      kubeSpec:
+        overlays:
+        - apiVersion: apps/v1
+          kind: Deployment
+          name: web
+          patches:
+          - path: spec.template.spec.containers.[name:web].env[-1]
+            value:
+              name: SESSION_AGE_IN_MINUTES
+              value: "60"
+    xcp:
+      centralAuthModes:
+        jwt: true
+      kubeSpec:
+        overlays:
+          - apiVersion: install.xcp.tetrate.io/v1alpha1
+            kind: CentralXcp
+            name: central-xcp
+            patches:
+              - path: spec.components.centralServer.kubeSpec.deployment.env
+                value:
+                  - name: ENABLE_NON_INGRESS_HOST_LEVEL_AUTHORIZATION
+                    value: "true"
+secrets:
+  xcp:
+    autoGenerateCerts: true
+  tsb:
+    adminPassword: admin
+  postgres:
+    username: tsb
+    password: tsb-postgres-password
+  elasticsearch:
+    username: tsb
+    password: tsb-elastic-password
+  ldap:
+    binddn: cn=admin,dc=tetrate,dc=io
+    bindpassword: admin

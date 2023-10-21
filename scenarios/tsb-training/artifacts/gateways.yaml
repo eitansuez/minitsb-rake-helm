@@ -1,0 +1,51 @@
+---
+apiVersion: gateway.tsb.tetrate.io/v2
+kind: Gateway
+metadata:
+  name: tier1-gateway
+  group: tier1-gateway-group
+  workspace: tier1-ws
+  tenant: tetrate
+  organization: tetrate
+spec:
+  workloadSelector:
+    namespace: tier1
+    labels:
+      app: tier1-gateway
+  http:
+  - hostname: bookinfo.tetrate.com
+    name: bookinfo
+    port: 80
+    routing:
+      rules:
+      - route:
+          clusterDestination:
+            clusters:
+            - name: c1
+              weight: 50
+            - name: c2
+              weight: 50
+---
+apiVersion: gateway.tsb.tetrate.io/v2
+kind: Gateway
+metadata:
+  organization: tetrate
+  name: bookinfo-gw-ingress
+  group: bookinfo-gw
+  workspace: bookinfo-ws
+  tenant: tetrate
+spec:
+  workloadSelector:
+    namespace: bookinfo
+    labels:
+      app: tsb-gateway-bookinfo
+  http:
+  - name: bookinfo
+    port: 8080
+    hostname: "bookinfo.tetrate.com"
+    routing:
+      rules:
+      - route:
+          serviceDestination:
+            host: "bookinfo/productpage.bookinfo.svc.cluster.local"
+            port: 9080
