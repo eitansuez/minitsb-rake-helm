@@ -39,8 +39,6 @@ spec:
                   - name: ENABLE_NON_INGRESS_HOST_LEVEL_AUTHORIZATION
                     value: "true"
 secrets:
-  xcp:
-    autoGenerateCerts: true
   tsb:
     adminPassword: admin
   postgres:
