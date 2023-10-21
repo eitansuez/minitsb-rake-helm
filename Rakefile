@@ -194,6 +194,10 @@ multitask :install_mp => ["install_#{Config.mp_cluster['name']}_cert", "label_#{
     --timeout 10m \
     --set image.registry=my-cluster-registry:5000"
 
+  # must block until the installation is complete
+  # for now..
+  sleep 300
+
   expose_tsb_gui
 
   sh "vcluster disconnect"
