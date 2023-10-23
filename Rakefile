@@ -302,7 +302,7 @@ end
 
 def patch_affinity
   Thread.new {
-    wait_for "kubectl -n tsb get managementplane managementplane 2>/dev/null", "ManagementPlane object to exist"
+    wait_for "kubectl get -n tsb managementplane managementplane -ojsonpath='{.spec.components.apiServer.kubeSpec.deployment.affinity.podAntiAffinity}' --allow-missing-template-keys=false 2>/dev/null", "ManagementPlane object to exist"
 
     for tsb_component in ['apiServer', 'collector', 'frontEnvoy', 'iamServer', 'mpc', 'ngac', 'oap', 'webUI']
       sh %Q[kubectl patch managementplane managementplane -n tsb --type=json \
