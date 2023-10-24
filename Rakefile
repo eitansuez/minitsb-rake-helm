@@ -194,7 +194,7 @@ multitask :install_mp => ["install_#{Config.mp_cluster['name']}_cert", "label_#{
     --timeout 10m \
     --set image.registry=my-cluster-registry:5000"
 
-  wait_until(:tsb_ready)
+  wait_until(:tsb_ready, "TSB installation is complete")
 
   expose_tsb_gui
 
@@ -311,11 +311,11 @@ end
 
 def tsb_ready
   for tsb_deployment in ['tsb-operator-management-plane', 'ldap', 'web', 'otel-collector', 'xcp-operator-central', 'oap', 'tsb', 'iam', 'central', 'mpc', 'envoy']
-    readyReplicas, status = Open3.capture2("kubectl get deploy -n tsb #{tsb_deployment} -ojsonpath='{.status.readyReplicas}'")
+    readyReplicas, status = Open3.capture2("kubectl get deploy -n tsb #{tsb_deployment} -ojsonpath='{.status.readyReplicas}' 2>/dev/null")
     if ! status.success?
       return false
     end
-    replicas, status = Open3.capture2("kubectl get deploy -n tsb #{tsb_deployment} -ojsonpath='{.spec.replicas}'")
+    replicas, status = Open3.capture2("kubectl get deploy -n tsb #{tsb_deployment} -ojsonpath='{.spec.replicas}' 2>/dev/null")
     if ! status.success?
       return false
     end
@@ -349,7 +349,7 @@ end
 
 def wait_for(command, msg=nil)
   if msg
-    Log.info "waiting for #{msg}"
+    Log.info "waiting for #{msg}.."
   end
 
   output, status = Open3.capture2(command)
@@ -359,14 +359,22 @@ def wait_for(command, msg=nil)
     output, status = Open3.capture2(command)
   end
 
-  Log.info "condition passed"
+  Log.info "..condition passed"
 end
 
-def wait_until(func)
+def wait_until(func, msg=nil)
+  if msg
+    Log.info "waiting until #{msg}.."
+  end
+
   result = method(func).call
   until result == true
     sleep 1
     print "."
     result = method(func).call
+  end
+
+  if msg
+    Log.info "..#{msg}"
   end
 end
