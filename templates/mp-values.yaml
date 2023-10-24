@@ -5,6 +5,15 @@ image:
 secrets:
   tsb:
     adminPassword: admin
+  postgres:
+    username: tsb
+    password: tsb-postgres-password
+  elasticsearch:
+    username: tsb
+    password: tsb-elastic-password
+  ldap:
+    binddn: cn=admin,dc=tetrate,dc=io
+    bindpassword: admin
   xcp:
     autoGenerateCerts: true
     rootca: |
@@ -15,15 +24,6 @@ secrets:
 <% rootcakey.split(/\n/).each do |line| -%>
       <%= line %>
 <% end -%>
-  postgres:
-    username: tsb
-    password: tsb-postgres-password
-  elasticsearch:
-    username: tsb
-    password: tsb-elastic-password
-  ldap:
-    binddn: cn=admin,dc=tetrate,dc=io
-    bindpassword: admin
 spec:
   hub: <%= registry %>
   organization: tetrate
@@ -65,3 +65,9 @@ spec:
                 value:
                   - name: ENABLE_NON_INGRESS_HOST_LEVEL_AUTHORIZATION
                     value: "true"
+    internalCertProvider:
+      certManager:
+        managed: INTERNAL
+  meshObservability:
+    settings:
+      apiEndpointMetricsEnabled: true

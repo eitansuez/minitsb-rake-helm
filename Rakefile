@@ -322,16 +322,10 @@ end
 def tsb_ready
   for tsb_deployment in ['tsb-operator-management-plane', 'ldap', 'web', 'otel-collector', 'xcp-operator-central', 'oap', 'tsb', 'iam', 'central', 'mpc', 'envoy']
     readyReplicas, status = Open3.capture2("kubectl get deploy -n tsb #{tsb_deployment} -ojsonpath='{.status.readyReplicas}' 2>/dev/null")
-    if ! status.success?
-      return false
-    end
+    return false unless status.success?
     replicas, status = Open3.capture2("kubectl get deploy -n tsb #{tsb_deployment} -ojsonpath='{.spec.replicas}' 2>/dev/null")
-    if ! status.success?
-      return false
-    end
-    if (readyReplicas != replicas)
-      return false
-    end
+    return false unless status.success?
+    return false unless readyReplicas == replicas
   end
   return true
 end
