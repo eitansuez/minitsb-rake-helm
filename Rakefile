@@ -194,9 +194,7 @@ multitask :install_mp => ["install_#{Config.mp_cluster['name']}_cert", "label_#{
     --timeout 10m \
     --set image.registry=my-cluster-registry:5000"
 
-  # must block until the installation is complete
-  # for now..
-  sleep 300
+  wait_until(:tsb_ready)
 
   expose_tsb_gui
 
@@ -311,6 +309,23 @@ def patch_affinity
   }
 end
 
+def tsb_ready
+  for tsb_deployment in ['tsb-operator-management-plane', 'ldap', 'web', 'otel-collector', 'xcp-operator-central', 'oap', 'tsb', 'iam', 'central', 'mpc', 'envoy']
+    readyReplicas, status = Open3.capture2("kubectl get deploy -n tsb #{tsb_deployment} -ojsonpath='{.status.readyReplicas}'")
+    if ! status.success?
+      return false
+    end
+    replicas, status = Open3.capture2("kubectl get deploy -n tsb #{tsb_deployment} -ojsonpath='{.spec.replicas}'")
+    if ! status.success?
+      return false
+    end
+    if (readyReplicas != replicas)
+      return false
+    end
+  end
+  return true
+end
+
 def expose_tsb_gui
   cluster_ctx=k8s_context_name(Config.mp_cluster['name'])
 
@@ -345,4 +360,13 @@ def wait_for(command, msg=nil)
   end
 
   Log.info "condition passed"
+end
+
+def wait_until(func)
+  result = method(func).call
+  until result == true
+    sleep 1
+    print "."
+    result = method(func).call
+  end
 end
