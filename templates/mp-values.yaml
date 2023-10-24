@@ -1,4 +1,31 @@
+---
+image:
+  tag: <%= tsb_version %>
+  registry: <%= registry %>
+secrets:
+  tsb:
+    adminPassword: admin
+  xcp:
+    autoGenerateCerts: true
+    rootca: |
+<% rootca.split(/\n/).each do |line| -%>
+      <%= line %>
+<% end -%>
+    rootcakey: |
+<% rootcakey.split(/\n/).each do |line| -%>
+      <%= line %>
+<% end -%>
+  postgres:
+    username: tsb
+    password: tsb-postgres-password
+  elasticsearch:
+    username: tsb
+    password: tsb-elastic-password
+  ldap:
+    binddn: cn=admin,dc=tetrate,dc=io
+    bindpassword: admin
 spec:
+  hub: <%= registry %>
   organization: tetrate
   certIssuer:
     selfSigned: {}
@@ -38,15 +65,3 @@ spec:
                 value:
                   - name: ENABLE_NON_INGRESS_HOST_LEVEL_AUTHORIZATION
                     value: "true"
-secrets:
-  tsb:
-    adminPassword: admin
-  postgres:
-    username: tsb
-    password: tsb-postgres-password
-  elasticsearch:
-    username: tsb
-    password: tsb-elastic-password
-  ldap:
-    binddn: cn=admin,dc=tetrate,dc=io
-    bindpassword: admin

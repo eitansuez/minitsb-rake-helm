@@ -173,8 +173,22 @@ task :add_helm_repo do
   sh "helm repo update"
 end
 
+directory 'generated-artifacts'
+
+file "generated-artifacts/mp-values.yaml" => ['generated-artifacts', 'certs/root-cert.pem'] do
+  template_file = File.read('templates/mp-values.yaml')
+
+  registry = 'my-cluster-registry:5000'
+  tsb_version = Config.params['tsb_version']
+  rootca = File.read('certs/root-cert.pem')
+  rootcakey = File.read('certs/root-cert.key')
+
+  template = ERB.new(template_file, trim_mode: '-')
+  File.write("generated-artifacts/mp-values.yaml", template.result(binding))
+end
+
 desc "Install the TSB management plane"
-multitask :install_mp => ["install_#{Config.mp_cluster['name']}_cert", "label_#{Config.mp_cluster['name']}_locality", :deploy_metallb, :sync_images, :add_helm_repo] do
+multitask :install_mp => ["install_#{Config.mp_cluster['name']}_cert", "label_#{Config.mp_cluster['name']}_locality", :deploy_metallb, :sync_images, :add_helm_repo, 'generated-artifacts/mp-values.yaml'] do
   mp_context = k8s_context_name(Config.mp_cluster['name'])
 
   output, status = Open3.capture2("kubectl --context #{mp_context} get -n tsb managementplane managementplane 2>/dev/null")
@@ -188,11 +202,9 @@ multitask :install_mp => ["install_#{Config.mp_cluster['name']}_cert", "label_#{
   patch_affinity
 
   sh "helm install mp tetrate-tsb-helm/managementplane \
-    --version #{Config.params['tsb_version']} \
     --namespace tsb --create-namespace \
-    --values mp-values.yaml \
-    --timeout 10m \
-    --set image.registry=my-cluster-registry:5000"
+    --values generated-artifacts/mp-values.yaml \
+    --timeout 10m"
 
   wait_until(:tsb_ready, "TSB installation is complete")
 
@@ -215,8 +227,6 @@ file 'certs/xcp-central-ca-certs.pem' => ["certs", :install_mp] do
   mp_context = k8s_context_name(Config.mp_cluster['name'])
   sh "kubectl --context #{mp_context} get -n istio-system secret xcp-central-ca-bundle -o jsonpath='{.data.ca\\.crt}' | base64 --decode > certs/xcp-central-ca-certs.pem"
 end
-
-directory 'generated-artifacts'
 
 file 'generated-artifacts/clusteroperators.yaml' => ['generated-artifacts'] do
   cd('generated-artifacts') do
