@@ -78,29 +78,8 @@ end
 
 directory 'certs'
 
-file 'certs/root-cert.pem' => ["certs"] do
-  cd('certs') do
-    sh %Q[step certificate create "Root CA" root-cert.pem root-cert.key \
-      --profile root-ca \
-      --insecure --no-password]
-  end
-end
-
 Config.params['clusters'].each do |cluster_entry|
   cluster = cluster_entry['name']
-
-  directory "certs/#{cluster}"
-  file "certs/#{cluster}/ca-cert.pem" => ['certs/root-cert.pem', "certs/#{cluster}"] do
-    cd("certs/#{cluster}") do
-      sh %Q[step certificate create "Istio intermediate certificate for #{cluster}" ca-cert.pem ca-key.pem \
-        --profile intermediate-ca \
-        --san istiod.istio-system.svc \
-        --ca ../root-cert.pem --ca-key ../root-cert.key \
-        --insecure --no-password]
-
-      sh "cat ca-cert.pem ../root-cert.pem > cert-chain.pem"
-    end
-  end
 
   task "create_#{cluster}_vcluster" => :create_cluster do
     output, status = Open3.capture2("vcluster list | grep vcluster-#{cluster}")
@@ -111,27 +90,6 @@ Config.params['clusters'].each do |cluster_entry|
 
     sh "vcluster create #{cluster}"
     sh "vcluster disconnect"
-  end
-
-  multitask "install_#{cluster}_cert" => ["certs/#{cluster}/ca-cert.pem", "create_#{cluster}_vcluster"] do
-    context_name = k8s_context_name(cluster)
-
-    output, status = Open3.capture2("kubectl --context #{context_name} get secret -n istio-system cacerts 2>/dev/null")
-    if status.success?
-      Log.warn "cacerts secret already exists in cluster #{cluster}, skipping."
-      next
-    end
-
-    Log.info "Installing cacerts on #{cluster}.."
-
-    sh "kubectl --context #{context_name} create ns istio-system"
-    cd("certs/#{cluster}") do
-      sh "kubectl --context #{context_name} create secret generic cacerts -n istio-system \
-        --from-file=ca-cert.pem \
-        --from-file=ca-key.pem \
-        --from-file=../root-cert.pem \
-        --from-file=cert-chain.pem"
-    end
   end
 
   task "label_#{cluster}_locality" => "create_#{cluster}_vcluster" do
@@ -155,12 +113,6 @@ Config.params['clusters'].each do |cluster_entry|
 
 end
 
-desc "Generate istio cacerts"
-multitask :make_certs => Config.cluster_names.map { |cluster| "certs/#{cluster}/ca-cert.pem" }
-
-desc "Install istio cacerts as secrets in each vcluster"
-task :install_certs => Config.cluster_names.map { |cluster| "install_#{cluster}_cert" }
-
 desc "Create vclusters"
 task :create_vclusters => Config.cluster_names.map { |cluster| "create_#{cluster}_vcluster" }
 
@@ -175,20 +127,18 @@ end
 
 directory 'generated-artifacts'
 
-file "generated-artifacts/mp-values.yaml" => ['generated-artifacts', 'certs/root-cert.pem'] do
+file "generated-artifacts/mp-values.yaml" => ['generated-artifacts'] do
   template_file = File.read('templates/mp-values.yaml')
 
   registry = 'my-cluster-registry:5000'
   tsb_version = Config.params['tsb_version']
-  rootca = File.read('certs/root-cert.pem')
-  rootcakey = File.read('certs/root-cert.key')
 
   template = ERB.new(template_file, trim_mode: '-')
   File.write("generated-artifacts/mp-values.yaml", template.result(binding))
 end
 
 desc "Install the TSB management plane"
-multitask :install_mp => ["install_#{Config.mp_cluster['name']}_cert", "label_#{Config.mp_cluster['name']}_locality", :deploy_metallb, :sync_images, :add_helm_repo, 'generated-artifacts/mp-values.yaml'] do
+multitask :install_mp => ["label_#{Config.mp_cluster['name']}_locality", :deploy_metallb, :sync_images, :add_helm_repo, 'generated-artifacts/mp-values.yaml'] do
   mp_context = k8s_context_name(Config.mp_cluster['name'])
 
   output, status = Open3.capture2("kubectl --context #{mp_context} get -n tsb managementplane managementplane 2>/dev/null")
@@ -262,7 +212,7 @@ Config.cp_clusters.each do |cluster_entry|
     File.write("generated-artifacts/#{cluster}/controlplane.yaml", template.result(binding))
   end
 
-  task "install_cp_#{cluster}" => [:install_mp, "install_#{cluster}_cert", "label_#{cluster}_locality", 'generated-artifacts/clusteroperators.yaml', "generated-artifacts/#{cluster}/controlplane-secrets.yaml", "generated-artifacts/#{cluster}/controlplane.yaml"] do
+  task "install_cp_#{cluster}" => [:install_mp, "label_#{cluster}_locality", 'generated-artifacts/clusteroperators.yaml', "generated-artifacts/#{cluster}/controlplane-secrets.yaml", "generated-artifacts/#{cluster}/controlplane.yaml"] do
     cp_context = k8s_context_name(cluster)
 
     output, status = Open3.capture2("kubectl --context #{cp_context} get -n istio-system controlplane controlplane 2>/dev/null")
@@ -371,14 +321,12 @@ def wait_until(func, msg=nil)
     Log.info "waiting until #{msg}.."
   end
 
-  result = method(func).call
-  until result == true
+  until method(func).call == true
     sleep 1
     print "."
-    result = method(func).call
   end
 
   if msg
-    Log.info "..#{msg}"
+    Log.info "..done: #{msg}"
   end
 end

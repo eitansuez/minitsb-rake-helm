@@ -15,15 +15,7 @@ secrets:
     binddn: cn=admin,dc=tetrate,dc=io
     bindpassword: admin
   xcp:
-    autoGenerateCerts: true
-    rootca: |
-<% rootca.split(/\n/).each do |line| -%>
-      <%= line %>
-<% end -%>
-    rootcakey: |
-<% rootcakey.split(/\n/).each do |line| -%>
-      <%= line %>
-<% end -%>
+    autoGenerateCerts: false
 spec:
   hub: <%= registry %>
   organization: tetrate
