@@ -14,8 +14,13 @@ secrets:
   ldap:
     binddn: cn=admin,dc=tetrate,dc=io
     bindpassword: admin
-  xcp:
-    autoGenerateCerts: false
+# --
+# for some reason the below causes a validation error with the values.yaml file,
+#  it appears secrets.xcp.central is also required.
+#  since autoGenerateCerts default value is false, leave it commented out
+# --
+#  xcp:
+#    autoGenerateCerts: false
 spec:
   hub: <%= registry %>
   organization: tetrate

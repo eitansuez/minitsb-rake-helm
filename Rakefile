@@ -76,8 +76,6 @@ task :sync_images => :create_cluster do
     --parallel"
 end
 
-directory 'certs'
-
 Config.params['clusters'].each do |cluster_entry|
   cluster = cluster_entry['name']
 
@@ -163,19 +161,23 @@ multitask :install_mp => ["label_#{Config.mp_cluster['name']}_locality", :deploy
   sh "vcluster disconnect"
 end
 
+directory 'certs'
+
 file 'certs/mp-certs.pem' => ["certs", :install_mp] do
   mp_context = k8s_context_name(Config.mp_cluster['name'])
-  sh "kubectl --context #{mp_context} get -n istio-system secret mp-certs -o jsonpath='{.data.ca\\.crt}' | base64 --decode > certs/mp-certs.pem"
+  sh "kubectl --context #{mp_context} get -n istio-system secret tsb-certs -o jsonpath='{.data.ca\\.crt}' | base64 --decode > certs/mp-certs.pem"
 end
 
-file 'certs/es-certs.pem' => ["certs", :install_mp] do
-  mp_context = k8s_context_name(Config.mp_cluster['name'])
-  sh "kubectl --context #{mp_context} get -n istio-system secret es-certs -o jsonpath='{.data.ca\\.crt}' | base64 --decode > certs/es-certs.pem"
+file 'certs/es-certs.pem' => ["certs/mp-certs.pem", :install_mp] do
+  cd('certs') do
+    cp 'mp-certs.pem', 'es-certs.pem'
+  end
 end
 
-file 'certs/xcp-central-ca-certs.pem' => ["certs", :install_mp] do
-  mp_context = k8s_context_name(Config.mp_cluster['name'])
-  sh "kubectl --context #{mp_context} get -n istio-system secret xcp-central-ca-bundle -o jsonpath='{.data.ca\\.crt}' | base64 --decode > certs/xcp-central-ca-certs.pem"
+file 'certs/xcp-central-ca-certs.pem' => ["certs/mp-certs.pem", :install_mp] do
+  cd('certs') do
+    cp 'mp-certs.pem', 'xcp-central-ca-certs.pem'
+  end
 end
 
 file 'generated-artifacts/clusteroperators.yaml' => ['generated-artifacts'] do
