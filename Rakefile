@@ -158,6 +158,8 @@ multitask :install_mp => ["label_#{Config.mp_cluster['name']}_locality", :deploy
 
   expose_tsb_gui
 
+  configure_tctl
+
   sh "vcluster disconnect"
 end
 
@@ -225,8 +227,7 @@ Config.cp_clusters.each do |cluster_entry|
       --values generated-artifacts/#{cluster}/cp-values.yaml \
       --kube-context #{cp_context}"
 
-    # TODO: wait until cluster has been onboarded.
-    # can check tctl x status cluster #{cluster}
+    wait_for "tctl x status cluster #{cluster} | grep -i 'cluster onboarded'", "Cluster #{cluster} to be onboarded"
   end
 end
 
@@ -273,6 +274,16 @@ def tsb_ready
     return false unless readyReplicas == replicas
   end
   return true
+end
+
+def configure_tctl
+  mp_context = k8s_context_name(Config.mp_cluster['name'])
+  tsb_api_endpoint = `kubectl --context #{mp_context} get svc -n tsb envoy --output jsonpath='{.status.loadBalancer.ingress[0].ip}'`
+
+  sh "tctl config clusters set tsb-cluster --tls-insecure --bridge-address #{tsb_api_endpoint}:8443"
+  sh "tctl config users set tsb-admin --username admin --password admin --org tetrate"
+  sh "tctl config profiles set tsb-profile --cluster tsb-cluster --username tsb-admin"
+  sh "tctl config profiles set-current tsb-profile"
 end
 
 def expose_tsb_gui
