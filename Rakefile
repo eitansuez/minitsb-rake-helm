@@ -152,7 +152,7 @@ multitask :install_mp => ["label_#{Config.mp_cluster['name']}_locality", :deploy
   sh "helm install mp tetrate-tsb-helm/managementplane \
     --namespace tsb --create-namespace \
     --values generated-artifacts/mp-values.yaml \
-    --timeout 10m"
+    --kube-context #{mp_context}"
 
   wait_until(:tsb_ready, "TSB installation is complete")
 
@@ -163,26 +163,20 @@ end
 
 directory 'certs'
 
-file 'certs/mp-certs.pem' => ["certs", :install_mp] do
+file 'certs/tsb-ca-cert.pem' => ["certs", :install_mp] do
   mp_context = k8s_context_name(Config.mp_cluster['name'])
-  sh "kubectl --context #{mp_context} get -n istio-system secret tsb-certs -o jsonpath='{.data.ca\\.crt}' | base64 --decode > certs/mp-certs.pem"
+  sh "kubectl --context #{mp_context} get -n tsb secret tsb-certs -o jsonpath='{.data.ca\\.crt}' | base64 --decode > certs/tsb-ca-cert.pem"
 end
 
-file 'certs/es-certs.pem' => ["certs/mp-certs.pem", :install_mp] do
+file 'certs/es-ca-cert.pem' => ["certs/tsb-ca-cert.pem", :install_mp] do
   cd('certs') do
-    cp 'mp-certs.pem', 'es-certs.pem'
+    cp 'tsb-ca-cert.pem', 'es-ca-cert.pem'
   end
 end
 
-file 'certs/xcp-central-ca-certs.pem' => ["certs/mp-certs.pem", :install_mp] do
+file 'certs/xcp-ca-cert.pem' => ["certs/tsb-ca-cert.pem", :install_mp] do
   cd('certs') do
-    cp 'mp-certs.pem', 'xcp-central-ca-certs.pem'
-  end
-end
-
-file 'generated-artifacts/clusteroperators.yaml' => ['generated-artifacts'] do
-  cd('generated-artifacts') do
-    `tctl install manifest cluster-operators --registry my-cluster-registry:5000 > clusteroperators.yaml`
+    cp 'tsb-ca-cert.pem', 'xcp-ca-cert.pem'
   end
 end
 
@@ -190,31 +184,27 @@ Config.cp_clusters.each do |cluster_entry|
   cluster = cluster_entry['name']
 
   directory "generated-artifacts/#{cluster}"
+
   file "generated-artifacts/#{cluster}/service-account.jwk" => ["generated-artifacts/#{cluster}"] do
     cd("generated-artifacts/#{cluster}") do
       `tctl install cluster-service-account --cluster #{cluster} > service-account.jwk`
     end
   end
 
-  file "generated-artifacts/#{cluster}/controlplane-secrets.yaml" => ["generated-artifacts/#{cluster}/service-account.jwk", "certs/es-certs.pem", "certs/mp-certs.pem", "certs/xcp-central-ca-certs.pem"] do
-    `tctl install manifest control-plane-secrets \
-      --cluster #{cluster} \
-      --cluster-service-account="$(cat generated-artifacts/#{cluster}/service-account.jwk)" \
-      --elastic-ca-certificate="$(cat certs/es-certs.pem)" \
-      --management-plane-ca-certificate="$(cat certs/mp-certs.pem)" \
-      --xcp-central-ca-bundle="$(cat certs/xcp-central-ca-certs.pem)" \
-      > generated-artifacts/#{cluster}/controlplane-secrets.yaml`
-  end
-
-  file "generated-artifacts/#{cluster}/controlplane.yaml" => ["generated-artifacts/#{cluster}"] do
-    template_file = File.read('templates/controlplane.yaml')
+  file "generated-artifacts/#{cluster}/cp-values.yaml" => ["generated-artifacts/#{cluster}/service-account.jwk", "certs/es-ca-cert.pem", "certs/tsb-ca-cert.pem", "certs/xcp-ca-cert.pem"] do
+    template_file = File.read('templates/cp-values.yaml')
     mp_context = k8s_context_name(Config.mp_cluster['name'])
+
+    registry = 'my-cluster-registry:5000'
+    tsb_version = Config.params['tsb_version']
+
     tsb_api_endpoint = `kubectl --context #{mp_context} get svc -n tsb envoy --output jsonpath='{.status.loadBalancer.ingress[0].ip}'`
-    template = ERB.new(template_file)
-    File.write("generated-artifacts/#{cluster}/controlplane.yaml", template.result(binding))
+
+    template = ERB.new(template_file, trim_mode: '-')
+    File.write("generated-artifacts/#{cluster}/cp-values.yaml", template.result(binding))
   end
 
-  task "install_cp_#{cluster}" => [:install_mp, "label_#{cluster}_locality", 'generated-artifacts/clusteroperators.yaml', "generated-artifacts/#{cluster}/controlplane-secrets.yaml", "generated-artifacts/#{cluster}/controlplane.yaml"] do
+  task "install_cp_#{cluster}" => [:install_mp, "label_#{cluster}_locality", "generated-artifacts/#{cluster}/cp-values.yaml"] do
     cp_context = k8s_context_name(cluster)
 
     output, status = Open3.capture2("kubectl --context #{cp_context} get -n istio-system controlplane controlplane 2>/dev/null")
@@ -230,10 +220,13 @@ Config.cp_clusters.each do |cluster_entry|
 
     Log.info("Installing control plane on #{cluster}..")
 
-    sh "kubectl --context #{cp_context} apply -f generated-artifacts/clusteroperators.yaml"
-    sh "kubectl --context #{cp_context} apply -f generated-artifacts/#{cluster}/controlplane-secrets.yaml"
-    wait_for "kubectl --context #{cp_context} get controlplanes.install.tetrate.io 2>/dev/null", "ControlPlane CRD definition"
-    sh "kubectl --context #{cp_context} apply -f generated-artifacts/#{cluster}/controlplane.yaml"
+    sh "helm install cp tetrate-tsb-helm/controlplane \
+      --namespace istio-system --create-namespace \
+      --values generated-artifacts/#{cluster}/cp-values.yaml \
+      --kube-context #{cp_context}"
+
+    # TODO: wait until cluster has been onboarded.
+    # can check tctl x status cluster #{cluster}
   end
 end
 
