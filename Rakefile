@@ -91,7 +91,7 @@ Config.params['clusters'].each do |cluster_entry|
       next
     end
 
-    sh "vcluster create #{cluster}"
+    sh "vcluster create #{cluster} --kube-config-context-name #{cluster}"
     sh "vcluster disconnect"
   end
 
@@ -102,7 +102,7 @@ Config.params['clusters'].each do |cluster_entry|
     end
 
     Log.info "Labeling nodes for #{cluster} with region and zone information.."
-    context_name = k8s_context_name(cluster)
+    context_name = cluster
     nodes = `kubectl --context #{context_name} get node -ojsonpath='{.items[].metadata.name}'`.split("\n")
     for node in nodes
       if cluster_entry['region']
@@ -144,7 +144,7 @@ end
 
 desc "Install the TSB management plane"
 multitask :install_mp => ["label_#{Config.mp_cluster['name']}_locality", :deploy_metallb, :sync_images, :add_helm_repo, 'generated-artifacts/mp-values.yaml'] do
-  mp_context = k8s_context_name(Config.mp_cluster['name'])
+  mp_context = Config.mp_cluster['name']
 
   output, status = Open3.capture2("kubectl --context #{mp_context} get -n tsb managementplane managementplane 2>/dev/null")
   if status.success?
@@ -173,7 +173,7 @@ end
 directory 'certs'
 
 file 'certs/tsb-ca-cert.pem' => ["certs", :install_mp] do
-  mp_context = k8s_context_name(Config.mp_cluster['name'])
+  mp_context = Config.mp_cluster['name']
   sh "kubectl --context #{mp_context} get -n tsb secret tsb-certs -o jsonpath='{.data.ca\\.crt}' | base64 --decode > certs/tsb-ca-cert.pem"
 end
 
@@ -212,7 +212,7 @@ Config.cp_clusters.each do |cluster_entry|
 
   file "generated-artifacts/#{cluster}/cp-values.yaml" => ["generated-artifacts/#{cluster}/service-account.jwk", "certs/es-ca-cert.pem", "certs/tsb-ca-cert.pem", "certs/xcp-ca-cert.pem"] do
     template_file = File.read('templates/cp-values.yaml')
-    mp_context = k8s_context_name(Config.mp_cluster['name'])
+    mp_context = Config.mp_cluster['name']
 
     registry = Config.params['registry']
     tsb_version = Config.params['tsb_version']
@@ -225,7 +225,7 @@ Config.cp_clusters.each do |cluster_entry|
   end
 
   task "install_cp_#{cluster}" => [:install_mp, "label_#{cluster}_locality", "generated-artifacts/#{cluster}/cp-values.yaml", "generated-artifacts/#{cluster}/cluster.yaml"] do
-    cp_context = k8s_context_name(cluster)
+    cp_context = cluster
 
     output, status = Open3.capture2("kubectl --context #{cp_context} get -n istio-system controlplane controlplane 2>/dev/null")
     if status.success?
@@ -271,10 +271,6 @@ end
 
 
 
-def k8s_context_name(vcluster_name)
-  "vcluster_#{vcluster_name}_vcluster-#{vcluster_name}_k3d-tsb-cluster"
-end
-
 def patch_affinity
   Thread.new {
     wait_for "kubectl get -n tsb managementplane managementplane -ojsonpath='{.spec.components.apiServer.kubeSpec.deployment.affinity.podAntiAffinity}' --allow-missing-template-keys=false 2>/dev/null", "ManagementPlane object to exist"
@@ -298,7 +294,7 @@ def tsb_ready
 end
 
 def configure_tctl
-  mp_context = k8s_context_name(Config.mp_cluster['name'])
+  mp_context = Config.mp_cluster['name']
   tsb_api_endpoint = `kubectl --context #{mp_context} get svc -n tsb envoy --output jsonpath='{.status.loadBalancer.ingress[0].ip}'`
 
   sh "tctl config clusters set tsb-cluster --tls-insecure --bridge-address #{tsb_api_endpoint}:8443"
@@ -308,7 +304,7 @@ def configure_tctl
 end
 
 def expose_tsb_gui
-  cluster_ctx=k8s_context_name(Config.mp_cluster['name'])
+  cluster_ctx = Config.mp_cluster['name']
 
   kubectl_fullpath=`which kubectl`.strip
 
