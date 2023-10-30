@@ -1,0 +1,10 @@
+---
+apiVersion: api.tsb.tetrate.io/v2
+kind: Cluster
+metadata:
+  name: <%= cluster %>
+  organization: <%= org %>
+spec:
+  description: <%= if is_mp 'Tier1' else 'Workload' %> cluster <%= cluster %>
+  tokenTtl: "1h"
+  tier1Cluster: <%= is_mp %>

@@ -39,8 +39,13 @@ task :create_cluster do
     --image rancher/k3s:v#{Config.params['k8s_version']}-k3s1 \
     --k3s-arg "--disable=traefik,servicelb@server:0" \
     --no-lb \
-    --registry-create my-cluster-registry:0.0.0.0:5000 \
+    --registry-create #{k3d_reg_create(Config.params['registry'])} \
     --wait]
+end
+
+def k3d_reg_create(registry)
+  reg_host, reg_port = registry.split(":")
+  "#{reg_host}:0.0.0.0:#{reg_port}"
 end
 
 desc "Deploy metallb to host cluster and configure the address pool"
@@ -128,8 +133,10 @@ directory 'generated-artifacts'
 file "generated-artifacts/mp-values.yaml" => ['generated-artifacts'] do
   template_file = File.read('templates/mp-values.yaml')
 
-  registry = 'my-cluster-registry:5000'
+  registry = Config.params['registry']
   tsb_version = Config.params['tsb_version']
+  admin_pwd = Config.params['admin_pwd']
+  org = Config.params['org']
 
   template = ERB.new(template_file, trim_mode: '-')
   File.write("generated-artifacts/mp-values.yaml", template.result(binding))
@@ -193,12 +200,23 @@ Config.cp_clusters.each do |cluster_entry|
     end
   end
 
+  file "generated-artifacts/#{cluster}/cluster.yaml" do
+    template_file = File.read('templates/cluster.yaml')
+
+    org = Config.params['org']
+    is_mp = cluster_entry['is_mp']
+
+    template = ERB.new(template_file, trim_mode: '-')
+    File.write("generated-artifacts/#{cluster}/cluster.yaml", template.result(binding))
+  end
+
   file "generated-artifacts/#{cluster}/cp-values.yaml" => ["generated-artifacts/#{cluster}/service-account.jwk", "certs/es-ca-cert.pem", "certs/tsb-ca-cert.pem", "certs/xcp-ca-cert.pem"] do
     template_file = File.read('templates/cp-values.yaml')
     mp_context = k8s_context_name(Config.mp_cluster['name'])
 
-    registry = 'my-cluster-registry:5000'
+    registry = Config.params['registry']
     tsb_version = Config.params['tsb_version']
+    org = Config.params['org']
 
     tsb_api_endpoint = `kubectl --context #{mp_context} get svc -n tsb envoy --output jsonpath='{.status.loadBalancer.ingress[0].ip}'`
 
@@ -206,7 +224,7 @@ Config.cp_clusters.each do |cluster_entry|
     File.write("generated-artifacts/#{cluster}/cp-values.yaml", template.result(binding))
   end
 
-  task "install_cp_#{cluster}" => [:install_mp, "label_#{cluster}_locality", "generated-artifacts/#{cluster}/cp-values.yaml"] do
+  task "install_cp_#{cluster}" => [:install_mp, "label_#{cluster}_locality", "generated-artifacts/#{cluster}/cp-values.yaml", "generated-artifacts/#{cluster}/cluster.yaml"] do
     cp_context = k8s_context_name(cluster)
 
     output, status = Open3.capture2("kubectl --context #{cp_context} get -n istio-system controlplane controlplane 2>/dev/null")
@@ -221,6 +239,9 @@ Config.cp_clusters.each do |cluster_entry|
     end
 
     Log.info("Installing control plane on #{cluster}..")
+
+    sh "tctl apply -f generated-artifacts/#{cluster}/cluster.yaml"
+    sleep 1
 
     sh "helm install cp tetrate-tsb-helm/controlplane \
       --namespace istio-system --create-namespace \
@@ -281,7 +302,7 @@ def configure_tctl
   tsb_api_endpoint = `kubectl --context #{mp_context} get svc -n tsb envoy --output jsonpath='{.status.loadBalancer.ingress[0].ip}'`
 
   sh "tctl config clusters set tsb-cluster --tls-insecure --bridge-address #{tsb_api_endpoint}:8443"
-  sh "tctl config users set tsb-admin --username admin --password admin --org tetrate"
+  sh "tctl config users set tsb-admin --username admin --password #{Config.params['admin_pwd']} --org #{Config.params['org']}"
   sh "tctl config profiles set tsb-profile --cluster tsb-cluster --username tsb-admin"
   sh "tctl config profiles set-current tsb-profile"
 end

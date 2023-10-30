@@ -4,7 +4,7 @@ image:
   registry: <%= registry %>
 secrets:
   tsb:
-    adminPassword: admin
+    adminPassword: <%= admin_pwd %>
   postgres:
     username: tsb
     password: tsb-postgres-password
@@ -23,7 +23,7 @@ secrets:
 #    autoGenerateCerts: false
 spec:
   hub: <%= registry %>
-  organization: tetrate
+  organization: <%= org %>
   certIssuer:
     selfSigned: {}
     tsbCerts: {}

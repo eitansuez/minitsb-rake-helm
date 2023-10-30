@@ -5,3 +5,7 @@ tsb_repo:
   username: johndoe
   apikey: qqqqq
 scenario: tsb-training
+#
+registry: "my-cluster-registry:5000"
+admin_pwd: admin
+org: tetrate

@@ -22,7 +22,7 @@ secrets:
 <% end -%>
   clusterServiceAccount:
     JWK: '<%= File.read("generated-artifacts/#{cluster}/service-account.jwk") %>'
-    clusterFQN: organizations/tetrate/clusters/<%= cluster %>
+    clusterFQN: organizations/<%= org %>/clusters/<%= cluster %>
 spec:
   hub: <%= registry %>
   telemetryStore:
