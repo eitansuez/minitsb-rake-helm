@@ -5,6 +5,6 @@ metadata:
   name: <%= cluster %>
   organization: <%= org %>
 spec:
-  description: <%= if is_mp 'Tier1' else 'Workload' %> cluster <%= cluster %>
+  description: <% if is_mp %>Tier1<% else %>Workload<% end %> cluster <%= cluster %>
   tokenTtl: "1h"
   tier1Cluster: <%= is_mp %>
