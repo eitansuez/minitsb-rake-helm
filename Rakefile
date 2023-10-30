@@ -85,14 +85,14 @@ Config.params['clusters'].each do |cluster_entry|
   cluster = cluster_entry['name']
 
   task "create_#{cluster}_vcluster" => :create_cluster do
-    output, status = Open3.capture2("vcluster list | grep vcluster-#{cluster}")
+    output, status = Open3.capture2("vcluster list | grep #{cluster}")
     if status.success?
       Log.warn "vcluster #{cluster} already exists, skipping."
       next
     end
 
     sh "vcluster create #{cluster} --kube-config-context-name #{cluster}"
-    sh "vcluster disconnect"
+    sh "kubectl config use-context k3d-tsb-cluster"
   end
 
   task "label_#{cluster}_locality" => "create_#{cluster}_vcluster" do
@@ -152,7 +152,7 @@ multitask :install_mp => ["label_#{Config.mp_cluster['name']}_locality", :deploy
     next
   end
 
-  sh "vcluster connect #{Config.mp_cluster['name']}"
+  sh "kubectl config use-context #{Config.mp_cluster['name']"
 
   patch_affinity
 
@@ -167,7 +167,7 @@ multitask :install_mp => ["label_#{Config.mp_cluster['name']}_locality", :deploy
 
   configure_tctl
 
-  sh "vcluster disconnect"
+  sh "kubectl config use-context k3d-tsb-cluster"
 end
 
 directory 'certs'
