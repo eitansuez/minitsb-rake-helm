@@ -23,10 +23,11 @@ RSpec.describe TsbConfig do
     end
 
     it 'identifies the cp cluster names' do
-      expect(@config.cp_clusters.map { |c| c['name'] }).to eq ["c1", "c2", "c3"]
+      expect(@config.cp_clusters.map { |c| c['name'] }).to eq ["t1", "c1", "c2", "c3"]
     end
 
     it 'defaults to onboarding control plane clusters unless explicitly set to false' do
+      expect(@config.clusters['t1']['onboard_cluster']).to be true
       expect(@config.clusters['c1']['onboard_cluster']).to be true
       expect(@config.clusters['c2']['onboard_cluster']).to be false
       expect(@config.clusters['c3']['onboard_cluster']).to be true

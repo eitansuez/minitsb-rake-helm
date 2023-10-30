@@ -17,7 +17,7 @@ class TsbConfig
     @cluster_names = @params['clusters'].map { |c| c['name'] }
 
     @mp_cluster = @params['clusters'].find { |c| c['is_mp'] }
-    @cp_clusters = @params['clusters'].select { |c| !c['is_mp'] }
+    @cp_clusters = @params['clusters']
 
     # default onboard_cluster to true if not specified
     @params['clusters'].each do |cluster|
