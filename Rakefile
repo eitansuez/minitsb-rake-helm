@@ -195,6 +195,12 @@ Config.cp_clusters.each do |cluster_entry|
   directory "generated-artifacts/#{cluster}"
 
   file "generated-artifacts/#{cluster}/service-account.jwk" => ["generated-artifacts/#{cluster}"] do
+
+    if !cluster_entry['onboard_cluster']
+      Log.info("Skipping generating service account key for cluster #{cluster} ('onboard_cluster' is set to false)")
+      next
+    end
+
     cd("generated-artifacts/#{cluster}") do
       `tctl install cluster-service-account --cluster #{cluster} > service-account.jwk`
     end
@@ -211,6 +217,12 @@ Config.cp_clusters.each do |cluster_entry|
   end
 
   file "generated-artifacts/#{cluster}/cp-values.yaml" => ["generated-artifacts/#{cluster}/service-account.jwk", "certs/es-ca-cert.pem", "certs/tsb-ca-cert.pem", "certs/xcp-ca-cert.pem"] do
+
+    if !cluster_entry['onboard_cluster']
+      Log.info("Skipping generating cp-values.yaml for cluster #{cluster} ('onboard_cluster' is set to false)")
+      next
+    end
+
     template_file = File.read('templates/cp-values.yaml')
     mp_context = Config.mp_cluster['name']
 
