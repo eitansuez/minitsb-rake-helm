@@ -152,7 +152,7 @@ multitask :install_mp => ["label_#{Config.mp_cluster['name']}_locality", :deploy
     next
   end
 
-  sh "kubectl config use-context #{Config.mp_cluster['name']"
+  sh "kubectl config use-context #{Config.mp_cluster['name']}"
 
   patch_affinity
 
