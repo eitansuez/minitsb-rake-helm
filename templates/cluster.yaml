@@ -7,4 +7,4 @@ metadata:
 spec:
   description: <% if is_mp %>Tier1<% else %>Workload<% end %> cluster <%= cluster %>
   tokenTtl: "1h"
-  tier1Cluster: <%= is_mp %>
+  tier1Cluster: <% if is_mp %>true<% else %>false<% end %>
