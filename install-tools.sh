@@ -73,7 +73,7 @@ sudo bash -c "helm completion bash > /etc/bash_completion.d/helm"
 source /etc/bash_completion
 
 print_info "Appending to .bashrc some command-line conveniences and environment variables"
-cat >> ~/.bashrc <<'EOF'
+cat >> ~/.bashrc <<EOF
 
 #
 set -o vi
