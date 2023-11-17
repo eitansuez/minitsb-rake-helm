@@ -85,7 +85,7 @@ Config.params['clusters'].each do |cluster_entry|
   cluster = cluster_entry['name']
 
   task "create_#{cluster}_vcluster" => :create_cluster do
-    output, status = Open3.capture2("vcluster list | grep #{cluster}")
+    output, status = Open3.capture2("kubectl config get-contexts #{cluster}")
     if status.success?
       Log.warn "vcluster #{cluster} already exists, skipping."
       next
