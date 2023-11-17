@@ -28,13 +28,13 @@ spec:
   telemetryStore:
     elastic:
       host: <%= tsb_api_endpoint %>
-      port: 8443
+      port: 443
       version: 7
       protocol: https
       selfSigned: true
   managementPlane:
     host: <%= tsb_api_endpoint %>
-    port: 8443
+    port: 443
     clusterName: <%= cluster %>
     selfSigned: true
   components:

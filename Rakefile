@@ -164,8 +164,8 @@ multitask :install_mp => ["label_#{Config.mp_cluster['name']}_locality", :deploy
   wait_until(:tsb_ready, "TSB installation is complete")
 
   expose_tsb_gui
-
   configure_tctl
+  append_api_endpoint_to_bashrc
 
   sh "kubectl config use-context k3d-tsb-cluster"
 end
@@ -175,6 +175,8 @@ directory 'certs'
 file 'certs/tsb-ca-cert.pem' => ["certs", :install_mp] do
   mp_context = Config.mp_cluster['name']
   sh "kubectl --context #{mp_context} get -n tsb secret tsb-certs -o jsonpath='{.data.ca\\.crt}' | base64 --decode > certs/tsb-ca-cert.pem"
+  # to match tsb lab instructions:
+  sh "ln -s certs/tsb-ca-cert.pem ~/tsb-ca.crt"
 end
 
 file 'certs/es-ca-cert.pem' => ["certs/tsb-ca-cert.pem", :install_mp] do
@@ -224,13 +226,12 @@ Config.cp_clusters.each do |cluster_entry|
     end
 
     template_file = File.read('templates/cp-values.yaml')
-    mp_context = Config.mp_cluster['name']
 
     registry = Config.params['registry']
     tsb_version = Config.params['tsb_version']
     org = Config.params['org']
 
-    tsb_api_endpoint = `kubectl --context #{mp_context} get svc -n tsb envoy --output jsonpath='{.status.loadBalancer.ingress[0].ip}'`
+    tsb_api_endpoint = tsb_api_endpoint()
 
     template = ERB.new(template_file, trim_mode: '-')
     File.write("generated-artifacts/#{cluster}/cp-values.yaml", template.result(binding))
@@ -276,12 +277,15 @@ task :deploy_scenario => :install_controlplanes do
     sh "./info.sh"
   end
   public_ip = `curl -s ifconfig.me`
-  puts "Management plane GUI can be accessed at: https://#{public_ip}:8443/"
+  puts "Management plane GUI can be accessed at: https://#{public_ip}/"
   Log.info("..provisioning complete.")
 end
 
 
 
+def tsb_api_endpoint()
+  `kubectl --context #{Config.mp_cluster['name']} get svc -n tsb envoy --output jsonpath='{.status.loadBalancer.ingress[0].ip}'`
+end
 
 def patch_affinity
   Thread.new {
@@ -306,13 +310,16 @@ def tsb_ready
 end
 
 def configure_tctl
-  mp_context = Config.mp_cluster['name']
-  tsb_api_endpoint = `kubectl --context #{mp_context} get svc -n tsb envoy --output jsonpath='{.status.loadBalancer.ingress[0].ip}'`
-
-  sh "tctl config clusters set tsb-cluster --tls-insecure --bridge-address #{tsb_api_endpoint}:8443"
+  sh "tctl config clusters set tsb-cluster --tls-insecure --bridge-address #{tsb_api_endpoint()}:443"
   sh "tctl config users set tsb-admin --username admin --password #{Config.params['admin_pwd']} --org #{Config.params['org']}"
   sh "tctl config profiles set tsb-profile --cluster tsb-cluster --username tsb-admin"
   sh "tctl config profiles set-current tsb-profile"
+end
+
+def append_api_endpoint_to_bashrc
+  open('~/.bashrc', 'a') { |f|
+    f << "export TSB_FQDN=#{tsb_api_endpoint()}\n"
+  }
 end
 
 def expose_tsb_gui
@@ -325,7 +332,7 @@ def expose_tsb_gui
   Description=TSB GUI Exposure
 
   [Service]
-  ExecStart=#{kubectl_fullpath} --kubeconfig #{Dir.home}/.kube/config --context #{cluster_ctx} port-forward -n tsb service/envoy 8443:8443 --address 0.0.0.0
+  ExecStart=#{kubectl_fullpath} --kubeconfig #{Dir.home}/.kube/config --context #{cluster_ctx} port-forward -n tsb service/envoy 443:443 --address 0.0.0.0
   Restart=always
 
   [Install]

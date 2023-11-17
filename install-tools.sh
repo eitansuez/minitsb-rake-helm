@@ -5,6 +5,7 @@ set -eu
 k8s_version=$(yq .k8s_version config.yaml)
 istio_version=$(yq .istio_version config.yaml)
 tsb_version=$(yq .tsb_version config.yaml)
+registry=$(yq .registry config.yaml)
 
 # Colors
 end="\033[0m"
@@ -71,7 +72,7 @@ sudo bash -c "tctl completion bash > /etc/bash_completion.d/tctl"
 sudo bash -c "helm completion bash > /etc/bash_completion.d/helm"
 source /etc/bash_completion
 
-print_info "Appending to .bashrc some command-line conveniences"
+print_info "Appending to .bashrc some command-line conveniences and environment variables"
 cat >> ~/.bashrc <<'EOF'
 
 #
@@ -79,5 +80,8 @@ set -o vi
 export EDITOR=vim
 alias k=kubectl
 complete -F __start_kubectl k
+
+export REGISTRY="${registry}"
+export TSB_VERSION=${tsb_version}
 
 EOF

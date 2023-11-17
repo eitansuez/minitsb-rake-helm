@@ -30,7 +30,7 @@ spec:
     clusterIntermediateCAs: {}
   components:
     frontEnvoy:
-      port: 8443
+      port: 443
     oap:
       streamingLogEnabled: true
       kubeSpec:
