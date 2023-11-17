@@ -176,7 +176,7 @@ file 'certs/tsb-ca-cert.pem' => ["certs", :install_mp] do
   mp_context = Config.mp_cluster['name']
   sh "kubectl --context #{mp_context} get -n tsb secret tsb-certs -o jsonpath='{.data.ca\\.crt}' | base64 --decode > certs/tsb-ca-cert.pem"
   # to match tsb lab instructions:
-  sh "ln -s certs/tsb-ca-cert.pem ~/tsb-ca.crt"
+  sh "ln -s certs/tsb-ca-cert.pem tsb-ca.crt"
 end
 
 file 'certs/es-ca-cert.pem' => ["certs/tsb-ca-cert.pem", :install_mp] do
