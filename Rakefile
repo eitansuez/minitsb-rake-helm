@@ -85,7 +85,7 @@ Config.params['clusters'].each do |cluster_entry|
   cluster = cluster_entry['name']
 
   task "create_#{cluster}_vcluster" => :create_cluster do
-    output, status = Open3.capture2("kubectl config get-contexts #{cluster}")
+    output, status = Open3.capture2("kubectl config get-contexts #{cluster} 2>/dev/null")
     if status.success?
       Log.warn "vcluster #{cluster} already exists, skipping."
       next
@@ -161,7 +161,7 @@ multitask :install_mp => ["label_#{Config.mp_cluster['name']}_locality", :deploy
     --values generated-artifacts/mp-values.yaml \
     --kube-context #{mp_context}"
 
-  wait_until(:tsb_ready, "TSB installation is complete")
+  wait_until(:tsb_ready, "TSB installation is complete", 5)
 
   expose_tsb_gui
   configure_tctl
@@ -343,14 +343,14 @@ def expose_tsb_gui
   sh "sudo systemctl start tsb-gui"
 end
 
-def wait_for(command, msg=nil)
+def wait_for(command, msg=nil, interval=1)
   if msg
     Log.info "waiting for #{msg}.."
   end
 
   output, status = Open3.capture2(command)
   until status.success?
-    sleep 1
+    sleep interval
     print "."
     output, status = Open3.capture2(command)
   end
@@ -358,13 +358,13 @@ def wait_for(command, msg=nil)
   Log.info "..condition passed"
 end
 
-def wait_until(func, msg=nil)
+def wait_until(func, msg=nil, interval=1)
   if msg
     Log.info "waiting until #{msg}.."
   end
 
   until method(func).call == true
-    sleep 1
+    sleep interval
     print "."
   end
 
