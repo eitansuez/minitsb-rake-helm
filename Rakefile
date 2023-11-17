@@ -317,7 +317,7 @@ def configure_tctl
 end
 
 def append_api_endpoint_to_bashrc
-  open('~/.bashrc', 'a') { |f|
+  open("#{Dir.home}/.bashrc", 'a') { |f|
     f << "export TSB_FQDN=#{tsb_api_endpoint()}\n"
   }
 end
