@@ -46,16 +46,17 @@ write_files:
   content: |
     #!/bin/sh
 
-    sysctl --system
-    systemctl restart docker
+    sudo sysctl --system
+    sudo systemctl restart docker
 
     wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq &&\
         chmod +x /usr/bin/yq
 
     cd /home/ubuntu
     git clone https://github.com/eitansuez/minitsb-rake-helm
-    cd minitsb-rake-helm
-    chown -R ubuntu:ubuntu .
+
+    chown -R ubuntu:ubuntu minitsb-rake-helm
+
     rm -rf minitsb-rake-helm/terraform
     rm -rf minitsb-rake-helm/.git
     mv minitsb-rake-helm/* . && rm -rf minitsb-rake-helm
@@ -75,4 +76,4 @@ write_files:
     rake
 
 runcmd:
-- /opt/setup-mini-tsb.sh
+- su - ubuntu -c "/opt/setup-mini-tsb.sh"
