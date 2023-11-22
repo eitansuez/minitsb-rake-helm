@@ -7,11 +7,13 @@ Provisions the VM for running TSB on GCP.
 
 ## Steps
 
-Create a `terraform.tfvars` file and in it, specify your gcp project name, and service account key json file name:
+Create a `terraform.tfvars` file and in it, specify your gcp project name, path to service account key json file, and tsb repo credentials:
 
 ```terraform
 gcp_project_name = "my-gcp-project"
 credentials_filename = "~/.ssh/my-service-account-key.json"
+tsb_repo_username = "john-doe"
+tsb_repo_apikey = "qqq"
 ```
 
 Initialize terraform:

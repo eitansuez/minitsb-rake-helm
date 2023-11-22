@@ -2,8 +2,8 @@ k8s_version: "1.27.6"
 istio_version: "1.17.8"
 tsb_version: "1.7.2"
 tsb_repo:
-  username: johndoe
-  apikey: qqqqq
+  username: ${tsb_repo_username}
+  apikey: ${tsb_repo_apikey}
 scenario: tsb-training
 #
 registry: "my-cluster-registry:5000"

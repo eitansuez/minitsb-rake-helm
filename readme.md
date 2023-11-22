@@ -1,15 +1,9 @@
 # Readme
 
-This repository is derived from Bart Van Bos' excellent [tsb-single-vm](https://github.com/tetratecx/tsb-single-vm).
+This repository is derived from [minitsb-rake](https://github.com/eitansuez/minitsb-rake).
+The difference is that instead of using the tctl CLI to install TSB, here we use Helm.
 
-The idea is to leverage [rake](https://ruby.github.io/rake/) for provisioning TSB.
-
-For learning Rake, I recommend Jim Weirich's two presentations:
-
-1. [Basic Rake](https://youtu.be/AFPWDzHWjEY)
-1. [Power Rake](https://youtu.be/KaEqZtulOus)
-
-## Basic recipe
+## Recipe
 
 1. Provision the VM.  See instructions in the terraform subdirectory's [readme file](terraform/readme.md).
 
@@ -24,24 +18,6 @@ For learning Rake, I recommend Jim Weirich's two presentations:
      ```shell
      cloud-init status
      ```
-
-1. On the VM, copy `config.yaml.template` to a file name `config.yaml` and edit it as follows:
-
-    a. Under `tsb_repo`, enter your credentials.
-
-    b. Select a scenario from the 'scenarios/' subdirectory.  Alternatively [build your own scenario](#scenario-convention).
-
-1. Install tools kubectl, k9s, k3d, istioctl, tctl, vcluster, and step cli:
-
-    ```shell
-    ./install-tools.sh
-    ```
-
-1. Install TSB:
-
-    ```shell
-    rake
-    ```
 
 ## Scenario convention
 

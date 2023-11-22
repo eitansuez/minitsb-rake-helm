@@ -36,6 +36,9 @@ resource "google_compute_instance" "tsb_vm" {
   }
 
   metadata = {
-    user-data = file("${path.module}/vm-userdata.tftpl")
+    user-data = templatefile("${path.module}/vm-userdata.tftpl", {
+      tsb_repo_username = var.tsb_repo_username
+      tsb_repo_apikey = var.tsb_repo_apikey
+    })
   }
 }

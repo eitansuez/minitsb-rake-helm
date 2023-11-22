@@ -56,11 +56,23 @@ write_files:
     git clone https://github.com/eitansuez/minitsb-rake-helm
     cd minitsb-rake-helm
     chown -R ubuntu:ubuntu .
-    # rm -rf minitsb-rake-helm/terraform
-    # mv minitsb-rake-helm/* . && rm -rf minitsb-rake-helm
+    rm -rf minitsb-rake-helm/terraform
+    rm -rf minitsb-rake-helm/.git
+    mv minitsb-rake-helm/* . && rm -rf minitsb-rake-helm
 
     # the only way i can get bundler to do its job..
     sudo bundle install
+
+    # write config.yaml file
+    export tsb_repo_username=${tsb_repo_username}
+    export tsb_repo_apikey=${tsb_repo_apikey}
+    envsubst < config.yaml.template > config.yaml
+
+    # cli's et al
+    ./install-tools.sh
+
+    # install tsb
+    rake
 
 runcmd:
 - /opt/setup-mini-tsb.sh
