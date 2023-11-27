@@ -19,6 +19,8 @@ The difference is that instead of using the tctl CLI to install TSB, here we use
      cloud-init status
      ```
 
+The logs of the cloud-init activity are located in `/var/logs/cloud-init-output.log`.
+
 ## Scenario convention
 
 Under the `scenarios` directory, create a new directory named after your new scenario.

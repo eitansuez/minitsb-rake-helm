@@ -7,5 +7,5 @@ tsb_repo:
 scenario: tsb-training
 #
 registry: "my-cluster-registry:5000"
-admin_pwd: admin
+admin_pwd: Tetrate123
 org: tetrate
