@@ -1,7 +1,7 @@
 # Readme
 
 This repository is derived from [minitsb-rake](https://github.com/eitansuez/minitsb-rake).
-The difference is that instead of using the tctl CLI to install TSB, here we use Helm.
+The difference is that instead of using the `tctl` CLI to install TSB, here we use Helm.
 
 ## Recipe
 
