@@ -23,7 +23,7 @@ resource "google_compute_instance" "tsb_vm" {
 
   boot_disk {
     initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-2304-amd64"
+      image = "ubuntu-os-cloud/ubuntu-2310-amd64"
       size = 25
     }
   }
