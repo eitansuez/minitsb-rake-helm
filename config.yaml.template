@@ -4,7 +4,7 @@ tsb_version: "1.8.0"
 tsb_repo:
   username: ${tsb_repo_username}
   apikey: ${tsb_repo_apikey}
-scenario: tsb-training
+scenario: tsb-dev-training
 #
 registry: "my-cluster-registry:5000"
 admin_pwd: Tetrate123
