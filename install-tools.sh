@@ -57,10 +57,11 @@ sudo dpkg --install step-cli_amd64.deb
 rm step-cli_amd64.deb
 
 print_info "Installing helm"
-wget --quiet https://get.helm.sh/helm-v3.14.3-linux-amd64.tar.gz
-tar -xzf helm-v3.13.1-linux-amd64.tar.gz
+HELM_VERSION="3.14.3"
+wget --quiet https://get.helm.sh/helm-v$HELM_VERSION-linux-amd64.tar.gz
+tar -xzf helm-v$HELM_VERSION-linux-amd64.tar.gz
 sudo install linux-amd64/helm /usr/local/bin/helm
-rm helm-v3.13.1-linux-amd64.tar.gz
+rm helm-v$HELM_VERSION-linux-amd64.tar.gz
 rm -rf linux-amd64
 
 print_info "Configuring command completion for all CLIs"
