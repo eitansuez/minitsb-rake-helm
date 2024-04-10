@@ -19,7 +19,7 @@ The difference is that instead of using the `tctl` CLI to install TSB, here we u
      cloud-init status
      ```
 
-The logs of the cloud-init activity are located in `/var/logs/cloud-init-output.log`.
+The logs of the cloud-init activity are located in `/var/log/cloud-init-output.log`.
 
 ## Scenario convention
 
