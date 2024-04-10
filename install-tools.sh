@@ -52,12 +52,12 @@ print_info "Installing vcluster"
 curl -sLo vcluster "https://github.com/loft-sh/vcluster/releases/latest/download/vcluster-linux-amd64" && sudo install -c -m 0755 vcluster /usr/local/bin && rm -f vcluster
 
 print_info "Installing step cli"
-wget --quiet https://dl.smallstep.com/gh-release/cli/docs-cli-install/v0.25.0/step-cli_0.25.0_amd64.deb
-sudo dpkg --install step-cli_0.25.0_amd64.deb
-rm step-cli_0.25.0_amd64.deb
+wget --quiet https://dl.smallstep.com/cli/docs-cli-install/latest/step-cli_amd64.deb
+sudo dpkg --install step-cli_amd64.deb
+rm step-cli_amd64.deb
 
 print_info "Installing helm"
-wget --quiet https://get.helm.sh/helm-v3.13.1-linux-amd64.tar.gz
+wget --quiet https://get.helm.sh/helm-v3.14.3-linux-amd64.tar.gz
 tar -xzf helm-v3.13.1-linux-amd64.tar.gz
 sudo install linux-amd64/helm /usr/local/bin/helm
 rm helm-v3.13.1-linux-amd64.tar.gz
