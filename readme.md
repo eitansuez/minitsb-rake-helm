@@ -21,6 +21,12 @@ The difference is that instead of using the `tctl` CLI to install TSB, here we u
 
     The logs of the cloud-init activity are located in `/var/log/cloud-init-output.log`.
 
+1. Install tools and CLIs
+
+     ```shell
+    ./install-tools.sh
+     ```
+
 1. Kick off the installation of TSB with the command:
 
      ```shell
