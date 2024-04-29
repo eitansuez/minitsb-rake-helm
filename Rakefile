@@ -156,7 +156,7 @@ multitask :install_mp => ["label_#{Config.mp_cluster['name']}_locality", :deploy
 
   patch_affinity
 
-  sh "helm install mp tetrate-tsb-helm/managementplane \
+  sh "helm upgrade --install mp tetrate-tsb-helm/managementplane \
     --namespace tsb --create-namespace \
     --values generated-artifacts/mp-values.yaml \
     --kube-context #{mp_context}"
@@ -256,7 +256,7 @@ Config.cp_clusters.each do |cluster_entry|
     sh "tctl apply -f generated-artifacts/#{cluster}/cluster.yaml"
     sleep 1
 
-    sh "helm install cp tetrate-tsb-helm/controlplane \
+    sh "helm upgrade --install cp tetrate-tsb-helm/controlplane \
       --namespace istio-system --create-namespace \
       --values generated-artifacts/#{cluster}/cp-values.yaml \
       --kube-context #{cp_context}"
