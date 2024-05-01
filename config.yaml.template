@@ -1,6 +1,6 @@
-k8s_version: "1.28.8"
-istio_version: "1.19.7"
-tsb_version: "1.8.1"
+k8s_version: "1.29.4"
+istio_version: "1.20.3"
+tsb_version: "1.9.0"
 tsb_repo:
   username: ${tsb_repo_username}
   apikey: ${tsb_repo_apikey}

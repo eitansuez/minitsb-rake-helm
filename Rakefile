@@ -37,8 +37,10 @@ task :create_cluster do
 
   sh %Q[k3d cluster create tsb-cluster \
     --image rancher/k3s:v#{Config.params['k8s_version']}-k3s1 \
+    --servers 3 \
     --k3s-arg "--disable=traefik,servicelb@server:0" \
     --no-lb \
+    --volume /tmp/k3d-volume@server:0 \
     --registry-create #{k3d_reg_create(Config.params['registry'])} \
     --wait]
 end
@@ -91,7 +93,7 @@ Config.params['clusters'].each do |cluster_entry|
       next
     end
 
-    sh "vcluster create #{cluster} --kube-config-context-name #{cluster}"
+    sh "vcluster create #{cluster} --kube-config-context-name #{cluster} --set sync.hoststorageclasses.enabled=true"
     sh "kubectl config use-context k3d-tsb-cluster"
   end
 
@@ -146,15 +148,19 @@ desc "Install the TSB management plane"
 multitask :install_mp => ["label_#{Config.mp_cluster['name']}_locality", :deploy_metallb, :sync_images, :add_helm_repo, 'generated-artifacts/mp-values.yaml'] do
   mp_context = Config.mp_cluster['name']
 
-  output, status = Open3.capture2("kubectl --context #{mp_context} get -n tsb managementplane managementplane 2>/dev/null")
-  if status.success?
-    Log.warn "managementplane appears to be installed, skipping."
-    next
-  end
+  # helm upgrade --install is idempotent, don't short-circuit it..
+  # output, status = Open3.capture2("kubectl --context #{mp_context} get -n tsb managementplane managementplane 2>/dev/null")
+  # if status.success?
+  #   Log.warn "managementplane appears to be installed, skipping."
+  #   next
+  # end
 
   sh "kubectl config use-context #{Config.mp_cluster['name']}"
 
-  patch_affinity
+  # now creating a 3-node host cluster, so shouldn't need to dodge affinity..
+  # patch_affinity
+
+  patch_elastic
 
   sh "helm upgrade --install mp tetrate-tsb-helm/managementplane \
     --namespace tsb --create-namespace \
@@ -176,7 +182,7 @@ file 'certs/tsb-ca-cert.pem' => ["certs", :install_mp] do
   mp_context = Config.mp_cluster['name']
   sh "kubectl --context #{mp_context} get -n tsb secret tsb-certs -o jsonpath='{.data.ca\\.crt}' | base64 --decode > certs/tsb-ca-cert.pem"
   # to match tsb lab instructions:
-  sh "ln -s certs/tsb-ca-cert.pem tsb-ca.crt"
+  sh "ln -sf certs/tsb-ca-cert.pem tsb-ca.crt"
 end
 
 file 'certs/es-ca-cert.pem' => ["certs/tsb-ca-cert.pem", :install_mp] do
@@ -298,8 +304,20 @@ def patch_affinity
   }
 end
 
+def patch_elastic
+  Thread.new {
+    wait_for "kubectl get -n tsb elasticsearch tsb-elastic 2>/dev/null", "elasticsearch pods to exist"
+
+    for node_set in ['0', '1']
+      sh %Q[kubectl patch elasticsearch/tsb-elastic -n tsb --type json \
+        -p "[{'op': 'add', 'path': '/spec/nodeSets/#{node_set}/podTemplate/metadata', 'value': {'annotations':{'topology.kubernetes.io/zone':'upi'}}}]"]
+    end
+  }
+end
+
 def tsb_ready
-  for tsb_deployment in ['tsb-operator-management-plane', 'ldap', 'web', 'otel-collector', 'xcp-operator-central', 'oap', 'tsb', 'iam', 'central', 'mpc', 'envoy']
+  # as of tsb v1.9, local replaces ldap as the default identityprovider
+  for tsb_deployment in ['tsb-operator-management-plane', 'web', 'otel-collector', 'xcp-operator-central', 'oap', 'tsb', 'iam', 'central', 'mpc', 'envoy']
     readyReplicas, status = Open3.capture2("kubectl get deploy -n tsb #{tsb_deployment} -ojsonpath='{.status.readyReplicas}' 2>/dev/null")
     return false unless status.success?
     replicas, status = Open3.capture2("kubectl get deploy -n tsb #{tsb_deployment} -ojsonpath='{.spec.replicas}' 2>/dev/null")
